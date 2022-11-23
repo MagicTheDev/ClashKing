@@ -6,6 +6,9 @@ from Assets.thPicDictionary import thDictionary
 from utils.troop_methods import heros, heroPets
 from Exceptions import *
 from CustomClasses.CustomBot import CustomClient
+from PIL import Image
+from urllib.request import Request, urlopen
+import io
 
 class DiscordEvents(commands.Cog):
 
@@ -22,41 +25,50 @@ class DiscordEvents(commands.Cog):
     @commands.Cog.listener()
     async def on_connect(self):
         print("connected")
-        tags = await self.bot.clan_db.distinct("tag")
-        reminder_tags = await self.bot.reminders.distinct("clan", filter={"type" : "War"})
-        self.bot.coc_client.add_war_updates(*tags)
+        result = await self.bot.credentials.find_one({"ip_address" : self.bot.ip})
+        if self.bot.custom_bot:
+            name = result.get("bot_name")
+            status = result.get("bot_status")
+            pfp = result.get("bot_profile_pic")
+            req = Request(url=pfp, headers={'User-Agent': 'Mozilla/5.0'})
+            f = io.BytesIO(urlopen(req).read())
+            await self.bot.user.edit(username=name, avatar=f.read())
+        if not self.bot.custom_bot:
+            tags = await self.bot.clan_db.distinct("tag")
+            reminder_tags = await self.bot.reminders.distinct("clan", filter={"type" : "War"})
+            self.bot.coc_client.add_war_updates(*tags)
 
-        current_war_times = await self.bot.get_current_war_times(tags=reminder_tags)
-        cog = self.bot.get_cog(name="Reminders")
-        for tag in current_war_times.keys():
-            war_end_time = current_war_times[tag]
-            reminder_times = await self.bot.get_reminder_times(clan_tag=tag)
-            acceptable_times = self.bot.get_times_in_range(reminder_times=reminder_times, war_end_time=war_end_time)
-            if not acceptable_times:
-                continue
-            for time in acceptable_times:
-                reminder_time = time[0] / 3600
-                if reminder_time.is_integer():
-                    reminder_time = int(reminder_time)
-                send_time = time[1]
-                scheduler.add_job(cog.war_reminder, 'date', run_date=send_time, args=[tag, reminder_time], id=f"{reminder_time}_{tag}", name=f"{tag}")
-        scheduler.print_jobs()
+            current_war_times = await self.bot.get_current_war_times(tags=reminder_tags)
+            cog = self.bot.get_cog(name="Reminders")
+            for tag in current_war_times.keys():
+                war_end_time = current_war_times[tag]
+                reminder_times = await self.bot.get_reminder_times(clan_tag=tag)
+                acceptable_times = self.bot.get_times_in_range(reminder_times=reminder_times, war_end_time=war_end_time)
+                if not acceptable_times:
+                    continue
+                for time in acceptable_times:
+                    reminder_time = time[0] / 3600
+                    if reminder_time.is_integer():
+                        reminder_time = int(reminder_time)
+                    send_time = time[1]
+                    scheduler.add_job(cog.war_reminder, 'date', run_date=send_time, args=[tag, reminder_time], id=f"{reminder_time}_{tag}", name=f"{tag}")
+            scheduler.print_jobs()
 
 
-        for g in self.bot.guilds:
-            results = await self.bot.server_db.find_one({"server": g.id})
-            if results is None:
-                await self.bot.server_db.insert_one({
-                    "server": g.id,
-                    "prefix": ".",
-                    "banlist": None,
-                    "greeting": None,
-                    "cwlcount": None,
-                    "topboardchannel": None,
-                    "tophour": None,
-                    "lbboardChannel": None,
-                    "lbhour": None
-                })
+            for g in self.bot.guilds:
+                results = await self.bot.server_db.find_one({"server": g.id})
+                if results is None:
+                    await self.bot.server_db.insert_one({
+                        "server": g.id,
+                        "prefix": ".",
+                        "banlist": None,
+                        "greeting": None,
+                        "cwlcount": None,
+                        "topboardchannel": None,
+                        "tophour": None,
+                        "lbboardChannel": None,
+                        "lbhour": None
+                    })
 
         print('We have logged in')
 
@@ -111,6 +123,8 @@ class DiscordEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild:disnake.Guild):
+        if self.bot.custom_bot:
+            return
         results = await self.bot.server_db.find_one({"server": guild.id})
         if results is None:
             await self.bot.server_db.insert_one({
@@ -136,6 +150,8 @@ class DiscordEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
+        if self.bot.custom_bot:
+            return
         channel = self.bot.get_channel(937519135607373874)
         await channel.send(f"Just left {guild.name}, {guild.member_count} members")
         len_g = len(self.bot.guilds)
@@ -147,6 +163,8 @@ class DiscordEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_application_command(self, ctx:disnake.ApplicationCommandInteraction):
+        if self.bot.custom_bot:
+            return
         channel = self.bot.get_channel(960972432993304616)
         try:
             server = ctx.guild.name

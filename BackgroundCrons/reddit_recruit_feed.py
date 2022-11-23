@@ -82,6 +82,20 @@ class reddit_feed(commands.Cog):
                                 limit = await self.bot.server_db.count_documents(filter={"reddit_feed": {"$ne": None}})
                                 for r in await results.to_list(length=limit):
                                     try:
+                                        # if its a custom bot, send only logs for its own server so we dont mess up others
+                                        serv = r.get("server")
+                                        if self.bot.custom_bot:
+                                            # if this is the server, let it go, else continue to next record
+                                            if serv == self.bot.custom_server_id:
+                                                pass
+                                            else:
+                                                continue
+                                        else:
+                                            # if its the main bot, see if this server is handled by any custom bots
+                                            # if it is, skip
+                                            all_custom_servers = await self.bot.credentials.distinct({"server"})
+                                            if serv in all_custom_servers:
+                                                continue
                                         channel = r.get("reddit_feed")
                                         channel = await self.bot.fetch_channel(channel)
                                         role = r.get("reddit_role")

@@ -12,8 +12,9 @@ from CustomClasses.emoji_class import Emojis, EmojiType
 from pyyoutube import Api
 from urllib.request import urlopen
 from utils.clash import weekend_timestamps
-import dateutil.relativedelta
+from linode_api4 import LinodeClient
 
+import dateutil.relativedelta
 import coc
 import motor.motor_asyncio
 import disnake
@@ -83,6 +84,11 @@ api = Api(api_key=os.getenv("YT_API_KEY"))
 class CustomClient(commands.Bot):
     def __init__(self, **options):
         super().__init__(**options)
+
+        self.custom_bot = None
+        self.custom_server_id = 0
+        self.ip = 0
+
         self.looper_db = motor.motor_asyncio.AsyncIOMotorClient(os.getenv("LOOPER_DB_LOGIN"))
         self.new_looper = self.looper_db.new_looper
         self.user_db = self.new_looper.user_db
@@ -116,6 +122,7 @@ class CustomClient(commands.Bot):
         self.reminders = self.db_client.usafam.reminders
         self.whitelist = self.db_client.usafam.whitelist
         self.rosters = self.db_client.usafam.rosters
+        self.credentials = self.db_client.usafam.credentials
 
         self.coc_client = coc.login(os.getenv("COC_EMAIL"), os.getenv("COC_PASSWORD"), client=coc.EventsClient, key_count=10, key_names="DiscordBot", throttle_limit = 30,
                                     cache_max_size=50000, load_game_data=coc.LoadGameData(always=True))
@@ -129,6 +136,8 @@ class CustomClient(commands.Bot):
 
         self.MAX_FEED_LEN = 5
         self.FAQ_CHANNEL_ID = 1010727127806648371
+        self.linode_client: LinodeClient = LinodeClient("61326d0c3df108fdeeb80597f8df9c1f731bf29d82d46bb68eb1a1cf76fa4e62")
+
 
     async def create_new_badge_emoji(self, url:str):
         new_url = url.replace(".png", "")

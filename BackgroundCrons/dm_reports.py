@@ -136,7 +136,6 @@ class DMFeed(commands.Cog, name="DM Feed & Reports"):
 
 
     async def dm_check(self):
-
         results = self.bot.legend_profile.find({"opt": "Opt-In"})
         limit = await self.bot.legend_profile.count_documents(filter={"opt": "Opt-In"})
         for document in await results.to_list(length=limit):

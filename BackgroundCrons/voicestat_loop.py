@@ -22,6 +22,20 @@ class VoiceStatCron(commands.Cog):
             channel = r.get("cwlCountdown")
             #print(channel)
             servers = r.get("server")
+            serv = r.get("server")
+            # if its a custom bot, send only logs for its own server so we dont mess up others
+            if self.bot.custom_bot:
+                # if this is the server, let it go, else continue to next record
+                if serv == self.bot.custom_server_id:
+                    pass
+                else:
+                    continue
+            else:
+                # if its the main bot, see if this server is handled by any custom bots
+                # if it is, skip
+                all_custom_servers = await self.bot.credentials.distinct({"server"})
+                if serv in all_custom_servers:
+                    continue
             if channel is not None:
                 try:
                     channel = await self.bot.fetch_channel(channel)

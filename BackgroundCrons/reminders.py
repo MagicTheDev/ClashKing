@@ -532,6 +532,20 @@ class reminders(commands.Cog, name="Reminders"):
             {"time": f"{reminder_time} hr"}
         ]})
         for reminder in await all_reminders.to_list(length=limit):
+            serv = reminder.get("server")
+            # if its a custom bot, send only logs for its own server so we dont mess up others
+            if self.bot.custom_bot:
+                # if this is the server, let it go, else continue to next record
+                if serv == self.bot.custom_server_id:
+                    pass
+                else:
+                    continue
+            else:
+                # if its the main bot, see if this server is handled by any custom bots
+                # if it is, skip
+                all_custom_servers = await self.bot.credentials.distinct({"server"})
+                if serv in all_custom_servers:
+                    continue
             custom_text = reminder.get("custom_text")
             if custom_text is None:
                 custom_text = ""
@@ -572,6 +586,20 @@ class reminders(commands.Cog, name="Reminders"):
             {"time": reminder_time}
         ]})
         for reminder in await all_reminders.to_list(length=10000):
+            serv = reminder.get("server")
+            # if its a custom bot, send only logs for its own server so we dont mess up others
+            if self.bot.custom_bot:
+                # if this is the server, let it go, else continue to next record
+                if serv == self.bot.custom_server_id:
+                    pass
+                else:
+                    continue
+            else:
+                # if its the main bot, see if this server is handled by any custom bots
+                # if it is, skip
+                all_custom_servers = await self.bot.credentials.distinct({"server"})
+                if serv in all_custom_servers:
+                    continue
             custom_text = reminder.get("custom_text")
             if custom_text is None:
                 custom_text = ""
@@ -632,6 +660,20 @@ class reminders(commands.Cog, name="Reminders"):
         tracked = self.bot.clan_db.find()
         limit = await self.bot.clan_db.count_documents(filter={})
         for cc in await tracked.to_list(length=limit):
+            serv = cc.get("server")
+            # if its a custom bot, send only logs for its own server so we dont mess up others
+            if self.bot.custom_bot:
+                # if this is the server, let it go, else continue to next record
+                if serv == self.bot.custom_server_id:
+                    pass
+                else:
+                    continue
+            else:
+                # if its the main bot, see if this server is handled by any custom bots
+                # if it is, skip
+                all_custom_servers = await self.bot.credentials.distinct({"server"})
+                if serv in all_custom_servers:
+                    continue
             try:
                 clancapital_channel = cc.get("clan_capital")
                 if clancapital_channel is None:

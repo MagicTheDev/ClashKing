@@ -2,6 +2,8 @@ import os
 import disnake
 import traceback
 import motor.motor_asyncio
+import socket
+import asyncio
 
 from CustomClasses.CustomBot import CustomClient
 from disnake import Client
@@ -14,7 +16,7 @@ from EventHub.event_websockets import player_websocket, clan_websocket
 scheduler = AsyncIOScheduler(timezone=utc)
 scheduler.start()
 
-IS_BETA = False
+IS_BETA = True
 discClient = Client()
 intents = disnake.Intents().none()
 intents.members = True
@@ -24,6 +26,19 @@ intents.guild_messages = True
 intents.messages = True
 bot = CustomClient(command_prefix="<@824653933347209227> ",help_command=None, intents=intents,
     sync_commands_debug=False, sync_permissions=True, reload=True)
+
+hostname = socket.gethostname()
+IPAddr = socket.gethostbyname(hostname)
+db_client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv("DB_LOGIN"))
+credentials = db_client.usafam.credentials
+results = asyncio.get_event_loop().run_until_complete(credentials.find_one({"ip_address" : IPAddr}))
+print(results)
+if results is None:
+    raise Exception
+else:
+    bot.ip = IPAddr
+    bot.custom_bot = True
+    token = results.get("bot_token")
 
 def check_commands():
     async def predicate(ctx: disnake.ApplicationCommandInteraction):
@@ -101,11 +116,11 @@ if IS_BETA:
         "War & CWL.cwl",
         "War & CWL.war",
         #"War & CWL.war_track",
-        #"discord_events",
+        "discord_events",
         "help",
         "other",
         "settings",
-        "owner_commands",
+        #"owner_commands",
         #"erikuh_comp",
         "Family_and_Clans.rosters"
 
@@ -157,12 +172,13 @@ else:
     )
 
 
-if __name__ == "__main__":
-    for extension in initial_extensions:
-        try:
-            bot.load_extension(extension)
-        except Exception as extension:
-            traceback.print_exc()
-    bot.loop.create_task(player_websocket())
-    bot.loop.create_task(clan_websocket())
-    bot.run(os.getenv("TOKEN"))
+
+
+for extension in initial_extensions:
+    try:
+        bot.load_extension(extension)
+    except Exception as extension:
+        traceback.print_exc()
+bot.loop.create_task(player_websocket())
+bot.loop.create_task(clan_websocket())
+bot.run(token)
