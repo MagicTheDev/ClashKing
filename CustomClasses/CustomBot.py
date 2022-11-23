@@ -136,7 +136,7 @@ class CustomClient(commands.Bot):
 
         self.MAX_FEED_LEN = 5
         self.FAQ_CHANNEL_ID = 1010727127806648371
-        self.linode_client: LinodeClient = LinodeClient("61326d0c3df108fdeeb80597f8df9c1f731bf29d82d46bb68eb1a1cf76fa4e62")
+        self.linode_client: LinodeClient = LinodeClient(os.getenv("LINODE"))
 
 
     async def create_new_badge_emoji(self, url:str):
