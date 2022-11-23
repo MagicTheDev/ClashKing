@@ -27,7 +27,7 @@ intents.messages = True
 bot = CustomClient(command_prefix="<@824653933347209227> ",help_command=None, intents=intents,
     sync_commands_debug=False, sync_permissions=True, reload=True)
 
-IPAddr = urllib.request.urlopen('https://ident.me').read().decode('utf8')
+IPAddr = urllib.request.urlopen('https://v4.ident.me').read().decode('utf8')
 print(IPAddr)
 db_client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv("DB_LOGIN"))
 credentials = db_client.usafam.credentials
