@@ -2,8 +2,8 @@ import os
 import disnake
 import traceback
 import motor.motor_asyncio
-import socket
 import asyncio
+import urllib.request
 
 from CustomClasses.CustomBot import CustomClient
 from disnake import Client
@@ -27,8 +27,7 @@ intents.messages = True
 bot = CustomClient(command_prefix="<@824653933347209227> ",help_command=None, intents=intents,
     sync_commands_debug=False, sync_permissions=True, reload=True)
 
-hostname = socket.gethostname()
-IPAddr = socket.gethostbyname(hostname)
+IPAddr = urllib.request.urlopen('https://ident.me').read().decode('utf8')
 db_client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv("DB_LOGIN"))
 credentials = db_client.usafam.credentials
 results = asyncio.get_event_loop().run_until_complete(credentials.find_one({"ip_address" : IPAddr}))
