@@ -135,7 +135,6 @@ def calc_raid_medals(attack_log: List[RaidClan]):
                 if district.id == 70000000:
                     total_medals += capital_dict[int(
                         district.hall_level)]
-
                 else:
                     total_medals += district_dict[int(
                         district.hall_level)]

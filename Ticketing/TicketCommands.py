@@ -381,10 +381,12 @@ class TicketCommands(commands.Cog):
                                                   f"{button_id.get('custom_id')}_settings.ping_staff": (ping_staff == "True")}})
             return await ctx.send(content=f"**Ping Staff Setting changed to {ping_staff == 'True'}**")
 
-        try:
-            embed = await self.bot.parse_to_embed(custom_json=custom_embed, guild=ctx.guild)
-        except:
-            raise FaultyJson
+        result = await self.bot.custom_embeds.find_one(
+            {"$and": [{"server_id": ctx.guild.id}, {"name": custom_embed}]})
+        if result is None:
+            return await ctx.send(content=f"Custom Embed - `{custom_embed}` does not exist")
+        embed = disnake.Embed.from_dict(data=result.get("embed"))
+
         result = await self.bot.tickets.find_one({"$and": [{"server_id": ctx.guild.id}, {"name": panel_name}]})
         button_id = next((x for x in result.get("components") if x.get("label") == button), None)
         await self.bot.tickets.update_one({"$and": [{"server_id": ctx.guild.id}, {"name": panel_name}]},

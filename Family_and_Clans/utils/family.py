@@ -255,8 +255,12 @@ class getFamily(commands.Cog):
 
         tasks = []
         async def get_raid_stuff(clan):
-            weekend = gen_raid_weekend_datestrings(number_of_weeks=1)[0]
-            weekend_raid_entry = await get_raidlog_entry(clan=clan, weekend=weekend, bot=self.bot, limit=2)
+            if self.bot.is_cwl():
+                spot = 0
+            else:
+                spot = 1
+            weekend = gen_raid_weekend_datestrings(number_of_weeks=2)[spot]
+            weekend_raid_entry = await get_raidlog_entry(clan=clan, weekend=weekend, bot=self.bot, limit=1)
             return [clan, weekend_raid_entry]
 
         for clan in clans:
@@ -279,7 +283,10 @@ class getFamily(commands.Cog):
             clan: coc.Clan = raid_item[0]
             raid: RaidLogEntry = raid_item[1]
 
-            medals = calc_raid_medals(raid.attack_log)
+            if raid.end_time.seconds_until <= 0:
+                medals = (raid.offensive_reward * 6) + raid.defensive_reward
+            else:
+                medals = calc_raid_medals(raid.attack_log)
             emoji = await self.bot.create_new_badge_emoji(url=clan.badge.url)
             hall_level = 0 if coc.utils.get(clan.capital_districts, id=70000000) is None else coc.utils.get(clan.capital_districts, id=70000000).hall_level
             embed.add_field(name=f"{emoji}{clan.name} | CH{hall_level}",

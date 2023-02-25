@@ -16,13 +16,14 @@ class COSPlayerHistory():
         if self._data.get("error") is not None:
             return "Private History"
 
-        return [COSClan(full_data=self._data, clan_data=clan_data) for clan_data in self._data["log"][:limit]]
+        clans = [COSClan(full_data=self._data, clan_data=clan_data) for clan_data in self._data["log"]]
+        return [clan for clan in clans if clan.stay_type != StayType.unknown][:limit]
 
     def summary(self, limit = 5):
         if self._data.get("error") is not None:
             return "Private History"
 
-        return [SummaryClans(full_data=self._data, clan_data=clan_data) for clan_data in self._data["summary"][:limit]]
+        return [SummaryClans(full_data=self._data, clan_data=clan_data) for clan_data in self._data["summary"]][:limit]
 
 class SummaryClans():
     def __init__(self, full_data, clan_data):

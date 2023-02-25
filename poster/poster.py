@@ -269,7 +269,7 @@ class Poster(commands.Cog):
             temp.close()
             return file
 
-        with concurrent.futures.ThreadPoolExecutor() as pool:
+        with concurrent.futures.ProcessPoolExecutor() as pool:
             loop = asyncio.get_event_loop()
             file = await loop.run_in_executor(pool, save_im, poster)
 

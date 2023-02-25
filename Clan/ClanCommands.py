@@ -18,7 +18,13 @@ tiz = pytz.utc
 #import excel2img
 import xlsxwriter
 from ImageGen import ClanCapitalResult as capital_gen
-
+from collections import defaultdict
+import operator
+from coc.raid import RaidMember, RaidLogEntry
+from Assets.thPicDictionary import thDictionary
+from Assets.emojiDictionary import emojiDictionary
+from utils.discord_utils import interaction_handler
+from datetime import timedelta
 #TODO- FIX CLAN GAMES SEASON CHOOSING
 
 class ClanCommands(commands.Cog, name="Clan Commands"):
@@ -45,7 +51,7 @@ class ClanCommands(commands.Cog, name="Clan Commands"):
             ----------
             clan: Search by clan tag or select an option from the autocomplete
         """
-
+        self.bot.coc_client.get_player()
         embed = disnake.Embed(
             description=f"<a:loading:884400064313819146> Fetching clan...",
             color=disnake.Color.green())
@@ -1008,6 +1014,179 @@ class ClanCommands(commands.Cog, name="Clan Commands"):
         await ctx.followup.send(content=missing_text)
 
 
+    @clan.sub_command(name="cwl-stats", description="See stats for cwl of a clan")
+    async def clan_cwl_stats(self, ctx: disnake.ApplicationCommandInteraction, clan:coc.Clan = commands.Param(converter=clan_converter)):
+        try:
+            group = await self.bot.coc_client.get_league_group(clan_tag=clan.tag)
+            our_clan_members = coc.utils.get(group.clans, tag=clan.tag).members
+            tags = [member.tag for member in our_clan_members]
+        except:
+            tags = []
+        if not tags:
+            return await ctx.send("Clan not in cwl")
+        # players = await self.bot.get_players(tags=tags)
+        first_of_month = int(datetime.now().replace(day=1, hour=1).timestamp())
+        true_month = datetime.now().month
+        month = calendar.month_name[true_month]
+
+        townhalls_attacked = []
+        my_townhalls = []
+        hits = defaultdict(list)
+        percents = defaultdict(list)
+        embeds = []
+        townhalls_defended = []
+        defense_hits = defaultdict(list)
+        defense_percents = defaultdict(list)
+
+        for player in tags:
+            results = await self.bot.warhits.find({"$and": [
+                {"tag": player},
+                {"war_type": "cwl"},
+                {"_time": {"$gte": first_of_month}}
+            ]}).sort("_time", 1).to_list(length=10)
+            text = ""
+            if not results:
+                continue
+            townhall = 1
+            name = ""
+            clan_tag = ""
+            for day, result in enumerate(results, 1):
+                hits[f"{result['townhall']}v{result['defender_townhall']}"].append(result['stars'])
+                percents[f"{result['townhall']}v{result['defender_townhall']}"].append(result['destruction'])
+                my_townhalls.append(result['townhall'])
+                townhalls_attacked.append([result['defender_townhall']])
+                star_str = ""
+                stars = result['stars']
+                for x in range(0, stars):
+                    star_str += self.bot.emoji.war_star.emoji_string
+                for x in range(0, 3 - stars):
+                    star_str += self.bot.emoji.no_star.emoji_string
+                text += f"`Day {day} `| {star_str}`{result['destruction']:3}%`{emojiDictionary(result['townhall'])}" \
+                        f"{self.bot.get_number_emoji(color='blue', number=result['townhall'])} **►** " \
+                        f"{emojiDictionary(result['defender_townhall'])}\n"
+                townhall = result['townhall']
+                name = result['name']
+                clan_tag = result['clan']
+
+            defense_text = ""
+            defense_results = await self.bot.warhits.find({"$and": [
+                {"defender_tag": player},
+                {"war_type": "cwl"},
+                {"_time": {"$gte": first_of_month}}
+            ]}).sort("_time", 1).to_list(length=10)
+            for day, result in enumerate(defense_results, 1):
+                defense_hits[f"{result['defender_townhall']}v{result['townhall']}"].append(result['stars'])
+                defense_percents[f"{result['defender_townhall']}v{result['townhall']}"].append(result['destruction'])
+                townhalls_defended.append([result['defender_townhall']])
+                star_str = ""
+                stars = result['stars']
+                for x in range(0, stars):
+                    star_str += self.bot.emoji.war_star.emoji_string
+                for x in range(0, 3 - stars):
+                    star_str += self.bot.emoji.no_star.emoji_string
+                defense_text += f"`Day {day} `| {star_str}`{result['destruction']:3}%`{emojiDictionary(result['townhall'])}" \
+                                f"{self.bot.get_number_emoji(color='blue', number=result['townhall'])} **►** " \
+                                f"{emojiDictionary(result['defender_townhall'])}\n"
+            if defense_text == "":
+                defense_text = "No Defenses Yet"
+
+            others_in_same_clan = await self.bot.warhits.find({"$and": [
+                {"clan": clan_tag},
+                {"war_type": "cwl"},
+                {"_time": {"$gte": first_of_month}}
+            ]}).to_list(length=1000)
+            star_dict = defaultdict(int)
+            dest_dict = defaultdict(int)
+            for result in others_in_same_clan:
+                star_dict[result["tag"]] += result["stars"]
+                dest_dict[result["tag"]] += result["destruction"]
+
+            star_list = []
+            for tag, stars in star_dict.items():
+                star_list.append([tag, stars, dest_dict[tag]])
+            sorted_list = sorted(star_list, key=operator.itemgetter(1, 2), reverse=True)
+
+            placement = 0
+            for count, item in enumerate(sorted_list, 1):
+                if item[0] == player:
+                    placement = count
+                    break
+
+            clan = await self.bot.getClan(clan_tag=clan_tag)
+            embed = disnake.Embed(title=f"{name} | {clan.name}", color=disnake.Color.green())
+            embed.add_field(name="Attacks", value=text, inline=False)
+            embed.add_field(name="Defenses", value=defense_text, inline=False)
+            embed.set_footer(icon_url=clan.badge.url,
+                             text=f"#{placement}/{len(sorted_list)} in CWL Group | {clan.war_league.name}")
+            embeds.append(embed)
+
+        last_30_days = await self.bot.warhits.find({"$and": [
+            {"tag": {"$in": tags}},
+            {"war_type": {"$in": ["cwl", "random"]}},
+            {"_time": {"$gte": int((datetime.now() - timedelta(days=35)).timestamp())}}
+        ]}).sort("_time", 1).to_list(length=1000)
+        seconds = []
+        for result in last_30_days:
+            time = datetime.fromtimestamp(result['_time'])
+            seconds.append((time.hour * 60 * 60) + (time.minute * 60) + (time.second))
+        average_seconds = int(sum(seconds) / len(seconds))
+        now = int(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+        average_time = datetime.fromtimestamp(now + average_seconds)
+        average_time = f"<t:{int(average_time.timestamp())}:t>"
+
+        def average(item):
+            return (round(sum(item) / len(item), 2))
+
+        def sort_by_th(item: str):
+            return int(item.split("v")[0])
+
+        def sort_by_other_th(item: str):
+            return int(item.split("v")[-1])
+
+        sorted_hits = sorted(hits.items(), key=lambda x: (sort_by_th(x[0]), sort_by_other_th(x[0])), reverse=True)
+        # sorted_hits = sorted(sorted_hits.items(), key=lambda item: item[1])
+        sorted_hits = dict(sorted_hits)
+        th_text = "THvTH";
+        stars_text = "Stars";
+        perc_text = "Perc%"
+        hitrate_text = f"`{th_text:>5} {stars_text:>4}{perc_text:>6}`\n"
+        for type, stars in sorted_hits.items():
+            hitrate_text += f"`{type:>5} {average(stars):>4.2f} {average(percents[type]):>5.1f}%`\n"
+        if not embeds:
+            return await ctx.send(embed=disnake.Embed(description=f"No CWL Stats found for {clan.name}",
+                                                      color=disnake.Color.red()))
+        main_embed = disnake.Embed(title=f"{clan.name} CWL Stats | {month} {datetime.now().year}",
+                                   description=f"Avg. Attacks Around: {average_time}\n"
+                                               f"**Average Hitrates:**\n{hitrate_text}",
+                                   color=disnake.Color.gold())
+        main_embed.set_thumbnail(url=clan.badge.url)
+
+        buttons = []
+        if len(embeds) > 4:
+            buttons = [disnake.ui.ActionRow(
+                disnake.ui.Button(label=f"Next {min(5, len(embeds[4:9]))} Accounts", style=disnake.ButtonStyle.grey,
+                                  custom_id="more_accounts"))]
+
+        start_page = -1
+        end_page = 4
+        await ctx.send(embeds=([main_embed] + embeds)[:5], components=buttons)
+        if len(embeds) <= 4:
+            return
+        message = await ctx.original_message()
+        while True:
+            try:
+                res: disnake.MessageInteraction = await interaction_handler(bot=self.bot, ctx=ctx, msg=message)
+            except:
+                return await message.edit(components=[])
+            start_page += 5
+            end_page += 5
+            await message.edit(components=[])
+            buttons = None
+            if len(embeds[start_page + 5:end_page + 5]) >= 1:
+                buttons = [disnake.ui.ActionRow(
+                    disnake.ui.Button(label=f"Next {min(5, len(embeds[start_page + 5:end_page + 5]))} Accounts",
+                                      style=disnake.ButtonStyle.grey, custom_id="more_accounts"))]
+            message = await ctx.followup.send(embeds=embeds[start_page:end_page], components=buttons)
 
     '''    @clan.sub_command(name="export", description="Export info about this clan")
     async def clan_export(self, ctx: disnake.ApplicationCommandInteraction, clan: coc.Clan = commands.Param(converter=clan_converter)):
@@ -1698,6 +1877,7 @@ class ClanCommands(commands.Cog, name="Clan Commands"):
     @war_stats_clan.autocomplete("clan")
     @activities.autocomplete("clan")
     @clan_ping.autocomplete("clan")
+    @clan_cwl_stats.autocomplete("clan")
     async def autocomp_clan(self, ctx: disnake.ApplicationCommandInteraction, query: str):
         tracked = self.bot.clan_db.find({"server": ctx.guild.id})
         limit = await self.bot.clan_db.count_documents(filter={"server": ctx.guild.id})

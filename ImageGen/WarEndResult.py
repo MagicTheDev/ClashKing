@@ -112,9 +112,9 @@ async def generate_war_result_image(war: coc.ClanWar):
         temp.close()
         return file
 
-    with concurrent.futures.ThreadPoolExecutor() as pool:
-        loop = asyncio.get_event_loop()
-        file = await loop.run_in_executor(pool, save_im, background)
+
+    loop = asyncio.get_event_loop()
+    file = await loop.run_in_executor(None, save_im, background)
 
     return file
 

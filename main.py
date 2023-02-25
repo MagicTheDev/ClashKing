@@ -10,11 +10,11 @@ from disnake.ext import commands
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import utc
 from EventHub.event_websockets import player_websocket, clan_websocket
-
+import concurrent.futures
 scheduler = AsyncIOScheduler(timezone=utc)
 scheduler.start()
 
-IS_BETA = False
+IS_BETA = True
 discClient = Client()
 intents = disnake.Intents().none()
 intents.members = True
@@ -28,6 +28,9 @@ def check_commands():
     async def predicate(ctx: disnake.ApplicationCommandInteraction):
         if ctx.author.id == 706149153431879760:
             return True
+        roles = (await ctx.guild.getch_member(member_id=ctx.author.id)).roles
+        if disnake.utils.get(roles, name="ClashKing Perms") != None:
+            return True
         db_client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv("DB_LOGIN"))
         whitelist = db_client.usafam.whitelist
         member = ctx.author
@@ -36,6 +39,7 @@ def check_commands():
         if commandd == "unlink":
             return True
         guild = ctx.guild.id
+
         results =  whitelist.find({"$and" : [
                 {"command": commandd},
                 {"server" : guild}
@@ -79,7 +83,6 @@ initial_extensions = [
     "Setups.autoboard",
     "Setups.evalsetup",
     "Reminders.ReminderSetup",
-    "Setups.welcome_messages",
     "Utility.army",
     "Utility.awards",
     "Utility.boost",
@@ -92,7 +95,9 @@ initial_extensions = [
     "settings",
     "owner_commands",
     "Ticketing.TicketCog",
-    "SetupNew.SetupCog"
+    "SetupNew.SetupCog",
+    "Link & Eval.link_button",
+    "Utility.LinkParsers"
 ]
 
 if not IS_BETA:
@@ -126,6 +131,6 @@ if __name__ == "__main__":
             bot.load_extension(extension)
         except Exception as extension:
             traceback.print_exc()
-    bot.loop.create_task(player_websocket())
-    bot.loop.create_task(clan_websocket())
+    #bot.loop.create_task(player_websocket())
+    #bot.loop.create_task(clan_websocket())
     bot.run(os.getenv("TOKEN"))

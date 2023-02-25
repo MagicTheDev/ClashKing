@@ -12,54 +12,12 @@ class LinkWelcomeMessages(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        results = await self.bot.welcome.find_one({"server": member.guild.id})
+        results = await self.bot.server_db.find_one({"server": member.guild.id})
         if results is not None:
-            welcome_channel = results.get("welcome_channel")
-
-            if welcome_channel is not None:
-                description = results.get("description")
-                button1text = results.get("button1text")
-                button2text = results.get("button2text")
-                button3text = results.get("button3text")
-                button1emoji = results.get("button1emoji")
-                button2emoji = results.get("button2emoji")
-                button3emoji = results.get("button3emoji")
-                button1channel = results.get("button1channel")
-                button2channel = results.get("button2channel")
-                button3channel = results.get("button3channel")
-
-                channel = self.bot.get_channel(welcome_channel)
-
-                emoji = "<a:redflame:932469862633181194>"
-                arrowleft = "<a:6270_Arrow_1_Gif:932470483205644300>"
-                arrowright = "<a:rightarrow:932470092883722271>"
-
-                embed = disnake.Embed(title="Enjoy your stay!",
-                                      description=f"{emoji}**Welcome to {member.guild.name}!**{emoji}\n"
-                                                  f"{description}"
-                                                  f"\n\n{arrowleft}__**Use the quick links below to get started.**__{arrowright}",
-                                      color=disnake.Color.green())
-
-                embed.set_thumbnail(url=member.display_avatar.url)
-
-                stat_buttons = [
-                    disnake.ui.Button(label=f"{button1text}", emoji=f"{button1emoji}",
-                                      url=f"https://discord.com/channels/{member.guild.id}/{button1channel}"),
-                    disnake.ui.Button(label=f"{button2text}", emoji=f"{button2emoji}",
-                                      url=f"https://discord.com/channels/{member.guild.id}/{button2channel}"),
-                    disnake.ui.Button(label=f"{button3text}", emoji=f"{button3emoji}",
-                                      url=f"https://discord.com/channels/{member.guild.id}/{button3channel}")]
-                buttons = disnake.ui.ActionRow()
-                for button in stat_buttons:
-                    buttons.append_item(button)
-                await channel.send(content=f"{member.mention}", embed=embed, components=[buttons])
-
-            link_channel = results.get("link_channel")
+            link_channel = results.get("welcome_link_channel")
             if link_channel is not None:
-                channel = self.bot.get_channel(link_channel)
-                embed = disnake.Embed(title=f"**Welcome to {member.guild.name}!**",
-                                      description=f"To link your account, press the link button below to get started.",
-                                      color=disnake.Color.green())
+                channel = await self.bot.getch_channel(link_channel)
+                embed = disnake.Embed.from_dict(data=results.get("welcome_link_embed"))
                 stat_buttons = [disnake.ui.Button(label="Link Account", emoji="🔗", style=disnake.ButtonStyle.green,
                                                   custom_id="Start Link"),
                                 disnake.ui.Button(label="Help", emoji="❓", style=disnake.ButtonStyle.grey,
@@ -67,7 +25,7 @@ class LinkWelcomeMessages(commands.Cog):
                 buttons = disnake.ui.ActionRow()
                 for button in stat_buttons:
                     buttons.append_item(button)
-                if member.guild.icon is not None:
+                if member.guild.icon is not None and embed.title == "**Welcome!**":
                     embed.set_thumbnail(url=member.guild.icon.url)
                 try:
                     if member.guild.id == 923764211845312533:
@@ -75,9 +33,9 @@ class LinkWelcomeMessages(commands.Cog):
                          allowed_mentions=disnake.AllowedMentions.none())
                     else:
                         await channel.send(content=member.mention, embed=embed, components=[stat_buttons])
-
                 except:
                     pass
+
 
     @commands.Cog.listener()
     async def on_button_click(self, ctx: disnake.MessageInteraction):

@@ -196,7 +196,6 @@ class CustomClient(commands.AutoShardedBot):
             elif color == "gold":
                 guild = self.get_guild(1042301195240357958)
         elif number >= 51:
-            print(color)
             if color == "white":
                 guild = self.get_guild(1042635651562086430)
             elif color == "blue":

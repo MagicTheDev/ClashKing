@@ -427,7 +427,7 @@ class Roster_Commands(commands.Cog, name="Rosters"):
         if message != "":
             await _roster.set_missing_text(text=message)
         def check(res: disnake.MessageInteraction):
-            return (res.message.id == msg.id) and (res.author.guild_permissions.manage_guild) and (res.user == ctx.user)
+            return (res.message.id == msg.id) and (res.user == ctx.user)
 
         try:
             res: disnake.MessageInteraction = await self.bot.wait_for("message_interaction", check=check, timeout=600)
