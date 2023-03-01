@@ -106,6 +106,8 @@ class OwnerCommands(commands.Cog):
     async def raid_loop(self, iter_spot):
         print(iter_spot)'''
 
+
+
     @coc.RaidEvents.new_offensive_opponent()
     async def new_opponent(self, clan: coc.RaidClan, raid: RaidLogEntry):
         channel = await self.bot.getch_channel(1071566470137511966)
@@ -233,6 +235,22 @@ class OwnerCommands(commands.Cog):
         await ctx.send(file=file)
 
 
+    @commands.slash_command(name="get_lb")
+    @commands.is_owner()
+    async def get_lb(self, ctx: disnake.ApplicationCommandInteraction):
+        all_tags = await self.bot.erikuh.distinct("player_tag")
+        all_players = await self.bot.get_players(tags=all_tags)
+        player_list = []
+        for player in all_players:
+            player : coc.Player
+            try:
+                player.legend_statistics.previous_season.id
+            except:
+                continue
+            player_list.append(player)
+        player_list = sorted(player_list, key=lambda x: x.legend_statistics.previous_season.trophies, reverse=True)
+        for count, player in enumerate(player_list, 1):
+            print(f"{count}. {player.name} | {player.legend_statistics.previous_season.trophies}")
 
 
 
