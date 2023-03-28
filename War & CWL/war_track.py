@@ -192,8 +192,8 @@ class War_Log(commands.Cog):
                         await self.bot.player_stats.update_one({"tag": attack.attacker.tag}, {"$push": {f"last_online_times.{season}": _time}})
 
                 if attack_feed is None:
-                    attack_feed = "Continuous Feed"
-                if attack_feed == "Continuous Feed":
+                    attack_feed = "Update Feed"
+                if attack_feed == "Update Feed":
                     star_str = ""
                     stars = attack.stars
                     for x in range(0, stars):
